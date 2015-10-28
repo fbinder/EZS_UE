@@ -1,0 +1,6 @@
+set(halhdrs
+	${halhdrs}
+	${CMAKE_CURRENT_SOURCE_DIR}/ADC.h
+	${CMAKE_CURRENT_SOURCE_DIR}/ADCChannel.h
+	PARENT_SCOPE
+)

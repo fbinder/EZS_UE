@@ -1,0 +1,65 @@
+#!/bin/bash
+# a shell script to run in the Qemu PC emulator an eCos
+# application that's been built with "Grub" startup mode.
+#
+# It runs Qemu with a 
+# single serial port connected to a telnet
+# server socket.
+#
+# An instance of the "xterm" X11 terminal emulator is started with
+# telnet command to connect to that virtual serial port on port
+#
+# When $2 is 'ddd' a debugger window is opened accordingly
+
+PORTFILENAME=/tmp/$USER.portnum
+@STARTUP_SCRIPTS@/findport.pl > $PORTFILENAME
+PORTNUM=`head -n 1 /tmp/$USER.portnum`
+SERIALPORTNUM=`tail -n 1 /tmp/$USER.portnum`
+GDB_BIN=gdb
+GDB_INIT=gdbinit
+BINARY=@TGT_ELF@
+echo $PWD
+echo "target remote :$PORTNUM" > $GDB_INIT
+echo "br cyg_user_start" >> $GDB_INIT
+echo "cont" >> $GDB_INIT
+
+if [[ $1 == "ddd" ]] || [[ $1 == "gdb" ]] || [[ $1 == "cgdb" ]]; then
+  DEBUG="-S -gdb tcp::$PORTNUM"
+fi
+
+XTERMEXE="telnet localhost $SERIALPORTNUM"
+
+# start a terminal that will telnet to the virtual machine's serial port
+(sleep 0.5; xterm -geometry 120x80 -title "eCos Serial 0" -name "eCos Serial 0" -e $XTERMEXE )&
+
+sleep 0.5
+# start ddd Debugger
+if [[ $1 == ddd ]]; then
+	(sleep 0.5;	xterm -e ddd --command $GDB_INIT --gdb --debugger $GDB_BIN   $BINARY ) &
+fi
+
+# start GDB in xterm terminal
+if [[ $1 == gdb ]]; then
+	(sleep 0.5; xterm -e $GDB_BIN --command $GDB_INIT $BINARY ) &
+fi
+
+# start cgdb in xterm terminal
+if [[ $1 == cgdb ]]; then
+	(sleep 0.5; xterm -e cgdb --command $GDB_INIT $BINARY ) &
+fi
+
+
+
+
+# MACHINE=$(gcc -dumpmachine|cut -f1 -d-)
+# if [[ $MACHINE == "x86_64" ]]; then
+#   BITS="64"
+# else
+#   BITS="32"
+# fi
+
+qemu-system-i386 -machine pc,accel=tcg \
+  $DEBUG \
+  -kernel $BINARY \
+  -serial telnet:localhost:$SERIALPORTNUM,server,nowait
+

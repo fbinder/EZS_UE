@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Retrieve tty device name
+TTY=`tty`
+# Setup com1 ouput to this terminal
+cat @BOCHSRC@ | sed -e "s|BOCHSTTYNUM|$TTY|" > @BOCHSRC@-serial
+echo "Terminal on tty: "
+echo $TTY
+sleep 1000000
+

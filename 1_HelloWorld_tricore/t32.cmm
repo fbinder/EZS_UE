@@ -1,0 +1,182 @@
+; Script file for TC1796 on TriBoard TC1796
+;
+; Initializes the TriCore, SRAM and Flash,
+; and loads the Sieve-Demo into memory.
+;
+;
+; $LastChangedDate: 2005-06-24 15:29:22 +0200 (Fri, 24 Jun 2005) $
+; $LastChangedRevision: 1322 $
+; $LastChangedBy: mobermaier $
+; Created: 2005-01-24 MAX
+;          2003-11-25 PEG
+;
+; performed tests
+; Dip Switch S301:      SW1=ON,  SW2=OFF, SW3=ON,  SW4=ON,
+;                       SW5=ON,  SW6=ON,  SW7=OFF, SW8=OFF
+; TriBoard TC1796.101 TC1796 EES-AB	2005-01-26 MAX
+; TriBoard TC1796.101 TC1796 EES-BA	2005-01-26 MAX
+; TriBoard TC1796.300 TC1796 EES-BC	2005-01-26 MAX
+;
+; memory mappings
+; flash is not declared - see flash.cmm
+; external SRAM			   mapped to 0xA1000000--0xA10FFFFF    1 MB
+; external Flash		   mapped to 0xA2000000--0xA23FFFFF    4 MB
+; processor internal program flash mapped to 0xA0000000--0xA01FFFFF    2 MB
+; processor internal data flash    mapped to 0xAFE00000--0xAFE1FFFF  128 KB
+;
+;
+; Please note that A-steps can not be halted immediately after reset.
+;
+; A-steps: Since the watchdog is not suspended in debug mode do not use a low JTAG
+; clock frequency in case the watchdog is not already disabled by the target program.
+; Otherwise the debugger is possibly to slow to disable the watchdog in time.
+; Minimum JTAG clock depends on the core clock. Default JTAG clock should be fine.
+;
+; Requirements to use OCDS-1:
+; Set jumper JP501 to 2-3 (= disable on-board wiggler)
+;
+; If onchip flash is not functional: DIP Switch S401 SW5=ON
+; Note: This may disable OCDS-L2 functionality.
+
+;========================================================================
+; Flash configuration
+; &flashbase= 0x80000000 | 0xa0000000
+;&flashbase=0xa0000000
+
+;========================================================================
+; Check chip ID if logical flash sectors are supported by device
+;
+;&chipid=data.long(D:0xf0000074)
+;&sectorsize=0x4000
+;if &chipid<0x00008a02
+;(
+;  ; TC1796 revision A chips
+;  &sectorsize=0x10000
+;)
+
+;; Store current breakpoints
+
+STOre breakpoints.cmm BREAK
+
+;========================================================================
+; initialize and start the debugger
+  RESet
+  SYStem.CPU TC1796
+  SYStem.Option TC1796FIX ON	; only required for A-step devices
+  SYStem.Up
+
+  
+; OCDS L2 (Trace) enable (OCNTRL OSCU configuration and control register)
+; OCDS == On-Chip Debug Support
+  Data.Set 0xF000047C %Long 0x0000003
+
+
+;========================================================================
+; Memory initialzation
+; EBU == External Bus Unit
+; EBU Configuration Register 
+ Data.Set 0xF8000010 %Long 0x00F9FF68  ; EBU_CON
+; Data.Set 0xF8000010 %Long 0x0000FF44  ; EBU_CON (JTAG-Server)
+; EBU Burst Flash Control Register 
+  Data.Set 0xF8000020 %Long 0x001001D0	; EBU_BFCON	
+  
+; memory assignment
+; AMD AM29BL162CB flash
+; EBU Address Select Register 0
+; EBU Bus Configuration Register 0
+; EBU Bus Asccess Parameter Register 0
+ Data.Set 0xF8000080 %Long 0xA2000051  ; EBU_ADDR_SEL0
+ Data.Set 0xF80000C0 %Long 0x00820000  ; EBU_BUSCON0
+ Data.Set 0xF8000100 %Long 0x23FF0100	; EBU_BUSAP0
+; GNU JTAG-Server
+;  Data.Set 0xF8000080 %Long 0xA4000853  ; EBU_ADDR_SEL0
+;  Data.Set 0xF80000C0 %Long 0x00920000  ; EBU_BUSCON0
+;  Data.Set 0xF8000100 %Long 0xC7B30000	; EBU_BUSAP0
+;
+; ALLIANCE SRAM
+; external SRAM		 mapped to 0xA1000000--0xA10FFFFF    1 MB
+ Data.Set 0xF8000088 %Long 0xA1000071  ; EBU_ADDR_SEL1
+ Data.Set 0xF80000C8 %Long 0x00820000  ; EBU_BUSCON1
+ Data.Set 0xF8000108 %Long 0x00D80000  ; EBU_BUSAP1
+; GNU JTAG-Server
+;  Data.Set 0xF8000088 %Long 0xA1000873  ; EBU_ADDR_SEL1
+;  Data.Set 0xF80000C8 %Long 0x00920000  ; EBU_BUSCON1
+;  Data.Set 0xF8000108 %Long 0x40D80010  ; EBU_BUSAP1
+
+;========================================================================
+; Flash Declaration
+;flash.reset
+; Program flash
+;flash.create 1. (&flashbase+0x00000000)--(&flashbase+0x0000ffff) &sectorsize TARGET Long
+;flash.create 2. (&flashbase+0x00010000)--(&flashbase+0x0001ffff) &sectorsize TARGET Long
+;flash.create 3. (&flashbase+0x00020000)--(&flashbase+0x0003ffff) 0x20000 TARGET Long;
+; flash.create 3. (&flashbase+0x00040000)--(&flashbase+0x0007ffff) 0x40000 TARGET Long
+; flash.create 3. (&flashbase+0x00080000)--(&flashbase+0x001fffff) 0x80000 TARGET Long
+; Data flash
+;flash.create 4. (&flashbase+0x0fe00000)--(&flashbase+0x0fe0ffff) 0x10000 TARGET Long
+;flash.create 5. (&flashbase+0x0fe10000)--(&flashbase+0x0fe1ffff) 0x10000 TARGET Long
+;flash.target 0xd4000000 0xd0000000 0x1000 ~~/demo/tricore/flash/long/tc1796.bin
+
+Data.Set 0xF0000200 %LONG 0x134
+
+;========================================================================
+; load demo program
+  Data.LOAD.ELF build/app.elf /gnu
+
+
+;========================================================================
+; TC1796 bug fix: PMI line buffer not invalidated during CPU halt
+; PMI == Program Memory Interface 
+; use -X:tr32 compiler flag to provide the needed symbols
+;  Data.PROLOG.TARGET flush_PMI_buffer++0x1f flush_data++0x1f
+;  Data.PROLOG.ON
+;  Register.Set PC 0xA1001002
+;  Step
+;  Register.Set PC 0xA1000200
+
+;; sloooooow virtual Output
+;; For some reason, the breakpoint does not work before manually
+;; pausing the execution for one time (the above OSEKOStrap4Stop
+;; doesn't seem to either...)
+;; 
+; AREA.Create VIOOUT
+; AREA.Select VIOOUT
+; AREA VIOOUT
+; Break.Set write /CMD "DATA.String Register(a4)--((Register(a4)+Register(d5)))" /RESUME
+; DATA.ASSEMBLE ___virtio NOP
+  
+;  Data.List
+;  Go main
+
+;PERF.reset
+;PERF.mode function
+;PERF.sort ratio
+;PERF.gate 500us
+
+;; breakpoints
+DO breakpoints.cmm
+
+b.s cyg_user_start
+
+;; Useful windows
+DO windows
+go
+
+ENDDO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

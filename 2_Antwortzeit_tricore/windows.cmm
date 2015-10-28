@@ -1,0 +1,30 @@
+// EZS Mon Oct 13 10:02:46 2014
+
+ B::
+ 
+ TOOLBAR ON
+ STATUSBAR ON
+ FramePOS -0.28571,-0.2,,,Maximized
+ WinPAGE.RESet
+ 
+ WinPAGE.Create P000
+ 
+ WinCLEAR
+ WinPOS 137.29 33.267 134. 28. 0. 1. W002
+ WinTABS 26. 26.
+ wl.symbol.browse.function
+ 
+ WinPOS 0.0 0.0 134. 62. 13. 1. W001
+ WinTABS 10. 10. 25. 62.
+ wl.list
+ 
+ WinPOS 137.43 0.0 68. 29. 5. 0. W003
+ wl.Frame
+ 
+ WinPOS 208.71 0.0 63. 29. 23. 1. W000
+ WinTABS 13. 0. 0. 0. 0. 0. 0.
+ wl.b.list
+ 
+ WinPAGE.select P000
+ 
+ ENDDO

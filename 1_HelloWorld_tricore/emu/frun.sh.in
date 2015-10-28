@@ -1,0 +1,48 @@
+#!/bin/bash
+# a shell script to run Fail* emulator 
+
+
+BOCHSRC=@BOCHSRC@-serial
+
+BINARY=@TGT_ELF@
+
+# Kill plot windows on termination
+on_die() {
+  [[ ! -z $PLOT_PID ]] && kill $PLOT_PID
+  [[ ! -z $TRACE_PID ]] && kill $TRACE_PID
+  [[ ! -z $SERIAL_PID ]] && kill $SERIAL_PID
+}
+
+trap 'on_die' TERM
+
+# start a terminal that will telnet to the virtual machine's serial port
+XTERMEXE="@STARTUP_SCRIPTS@/pts.sh"
+(xterm -geometry 120x80 -title "eCos Serial 0" -name "eCos Serial 0" -e $XTERMEXE )&
+SERIAL_PID=$!
+sleep 0.5
+
+# MACHINE=$(gcc -dumpmachine|cut -f1 -d-)
+# if [[ $MACHINE == "x86_64" ]]; then
+#   BITS="64"
+# else
+#   BITS="32"
+# fi
+
+# start the emulator
+OUTFILE=/tmp/ezs-dac-$USER.txt
+TRACEFILE=/tmp/ezs-trace-$USER.txt
+
+touch $OUTFILE
+touch $TRACEFILE
+
+python $EZS_CMAKE_MODULE_DIR/plot.py $OUTFILE &
+PLOT_PID=$!
+python $EZS_CMAKE_MODULE_DIR/plot.py $TRACEFILE dotrace &
+TRACE_PID=$!
+
+
+
+FAIL_ELF_PATH=@PROJECT_BINARY_DIR@/@TGT_ELF@ @FAIL_BINARY@ -f $BOCHSRC -q
+
+
+on_die
