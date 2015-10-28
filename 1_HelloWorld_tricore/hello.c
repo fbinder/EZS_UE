@@ -12,6 +12,7 @@
 
 
 /* Thread-Stack */
+#define PRIORITY 11
 #define STACKSIZE CYGNUM_HAL_STACK_SIZE_MINIMUM+1024
 static cyg_uint8 my_stack[STACKSIZE];
 static cyg_handle_t handle;
@@ -28,13 +29,23 @@ void test_thread(cyg_addrword_t arg){
 
 }
 
+static void hello_world(cyg_addrword_t data){
+	int message = (int) data;
+	printf("Beginning hello world excecution: thread data is %d\n", message);
+	for(;;){
+		diag_printf("Hello World!\n");
+		cyg_thread_delay(1000);
+	}
+}
 
 void cyg_user_start(void){
 	ezs_dac_init();
 
 	/* Thread erzeugen ... */
-
+	diag_printf("Entering cyg_user_start() function\n");
+	cyg_thread_create(PRIORITY, &hello_world, 0, "thread 1", my_stack, STACKSIZE, &handle, &threaddata);
 
 	/* Thread starten ... */
+	cyg_thread_resume(&handle);
 }
 
